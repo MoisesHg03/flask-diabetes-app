@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Predicción de Diabetes</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+<body class="light-mode">
+    <div class="theme-toggle">
+        <button id="toggle-theme" title="Cambiar Tema"><i class="fas fa-moon"></i></button>
+    </div>
+    <div class="container">
+        <header>
+            <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" class="logo">
+            <h1>Predicción de Diabetes</h1>
+            <p>Ingresa los datos para obtener una predicción en tiempo real</p>
+        </header>
+        <main>
+            <form method="POST" class="form-container" id="prediction-form" onsubmit="showSpinner()">
+                <div class="form-group">
+                    <label class="modern-label"><i class="fas fa-tint"></i> Glucosa: 
+                        <input type="number" name="glucosa" step="any" required placeholder="120" oninput="validateInput(this, 0, 500)">
+                        <span class="error-msg"></span>
+                    </label>
+                    <label class="modern-label"><i class="fas fa-heartbeat"></i> Presión Arterial: 
+                        <input type="number" name="presion" step="any" required placeholder="70" oninput="validateInput(this, 0, 200)">
+                        <span class="error-msg"></span>
+                    </label>
+                    <label class="modern-label"><i class="fas fa-ruler"></i> Grosor de Piel: 
+                        <input type="number" name="piel" step="any" required placeholder="20" oninput="validateInput(this, 0, 100)">
+                        <span class="error-msg"></span>
+                    </label>
+                    <label class="modern-label"><i class="fas fa-syringe"></i> Insulina: 
+                        <input type="number" name="insulina" step="any" required placeholder="80" oninput="validateInput(this, 0, 1000)">
+                        <span class="error-msg"></span>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label class="modern-label"><i class="fas fa-weight"></i> IMC: 
+                        <input type="number" name="imc" step="0.1" required placeholder="30.0" oninput="validateInput(this, 0, 100)">
+                        <span class="error-msg"></span>
+                    </label>
+                    <label class="modern-label"><i class="fas fa-dna"></i> Pedigrí Diabetes: 
+                        <input type="number" name="pedigri" step="0.01" required placeholder="0.5" oninput="validateInput(this, 0, 10)">
+                        <span class="error-msg"></span>
+                    </label>
+                    <label class="modern-label"><i class="fas fa-user"></i> Edad: 
+                        <input type="number" name="edad" required placeholder="40" oninput="validateInput(this, 0, 150)">
+                        <span class="error-msg"></span>
+                    </label>
+                    <label class="modern-label"><i class="fas fa-baby"></i> Embarazos: 
+                        <input type="number" name="embarazos" required placeholder="1" oninput="validateInput(this, 0, 20)">
+                        <span class="error-msg"></span>
+                    </label>
+                </div>
+                <button type="submit">Predecir</button>
+            </form>
+            <div id="spinner" class="spinner hidden"></div>
+            {% if resultado %}
+                <div class="resultado {{ resultado_clase }}">
+                    <h2>Resultado: {{ resultado }}</h2>
+                    <p>{{ explicacion }}</p>
+                </div>
+            {% endif %}
+            {% if historial %}
+                <button id="toggle-historial" class="historial-btn"><i class="fas fa-history"></i> Ver Historial</button>
+                <div id="historial-panel" class="historial-panel hidden">
+                    <div class="historial-header">
+                        <h3>Historial de Predicciones</h3>
+                        <div class="historial-actions">
+                            <form method="POST" action="{{ url_for('reset_historial') }}" onsubmit="return confirm('¿Estás seguro de que quieres resetear el historial? Esta acción no se puede deshacer.');">
+                                <button type="submit" class="reset-btn" title="Resetear Historial"><i class="fas fa-trash"></i></button>
+                            </form>
+                            <button id="close-historial" class="close-btn"><i class="fas fa-times"></i></button>
+                        </div>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Glucosa</th>
+                                <th>Presión</th>
+                                <th>Piel</th>
+                                <th>Insulina</th>
+                                <th>IMC</th>
+                                <th>Pedigrí</th>
+                                <th>Edad</th>
+                                <th>Embarazos</th>
+                                <th>Resultado</th>
+                                <th>Descargar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in historial %}
+                                <tr>
+                                    <td>{{ entry[10] }}</td>
+                                    <td>{{ entry[1] }}</td>
+                                    <td>{{ entry[2] }}</td>
+                                    <td>{{ entry[3] }}</td>
+                                    <td>{{ entry[4] }}</td>
+                                    <td>{{ entry[5] }}</td>
+                                    <td>{{ entry[6] }}</td>
+                                    <td>{{ entry[7] }}</td>
+                                    <td>{{ entry[8] }}</td>
+                                    <td>{{ entry[9] }}</td>
+                                    <td><a href="{{ url_for('download_pdf', id=entry[0]) }}" class="download-btn"><i class="fas fa-download"></i></a></td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+        </main>
+    </div>
+    <script>
+        function validateInput(input, min, max) {
+            const value = parseFloat(input.value);
+            const errorMsg = input.nextElementSibling;
+            if (value < min || value > max || isNaN(value)) {
+                input.style.borderColor = "#d32f2f";
+                errorMsg.textContent = `Entre ${min} y ${max}`;
+                input.setCustomValidity("Valor fuera de rango");
+            } else {
+                input.style.borderColor = "#ddd";
+                errorMsg.textContent = "";
+                input.setCustomValidity("");
+            }
+        }
+
+        function showSpinner() {
+            document.getElementById("spinner").classList.remove("hidden");
+        }
+
+        document.getElementById("toggle-theme").addEventListener("click", function() {
+            document.body.classList.toggle("dark-mode");
+            document.body.classList.toggle("light-mode");
+            this.innerHTML = document.body.classList.contains("dark-mode") ? 
+                '<i class="fas fa-sun"></i>' : 
+                '<i class="fas fa-moon"></i>';
+        });
+
+        const historialPanel = document.getElementById("historial-panel");
+        const toggleHistorialBtn = document.getElementById("toggle-historial");
+        const closeHistorialBtn = document.getElementById("close-historial");
+
+        toggleHistorialBtn.addEventListener("click", function() {
+            historialPanel.classList.toggle("hidden");
+            historialPanel.classList.toggle("visible");
+            this.innerHTML = historialPanel.classList.contains("visible") ? 
+                '<i class="fas fa-times"></i> Cerrar Historial' : 
+                '<i class="fas fa-history"></i> Ver Historial';
+        });
+
+        closeHistorialBtn.addEventListener("click", function() {
+            historialPanel.classList.remove("visible");
+            historialPanel.classList.add("hidden");
+            toggleHistorialBtn.innerHTML = '<i class="fas fa-history"></i> Ver Historial';
+        });
+    </script>
+</body>
+</html>
