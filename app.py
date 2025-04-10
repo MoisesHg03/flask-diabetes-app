@@ -32,6 +32,7 @@ def index():
                 float(request.form["embarazos"])
             ]
             prediccion = predict_diabetes(model, scaler, nuevos_datos)
+            print(f"Datos ingresados: {nuevos_datos}, Predicción del modelo: {prediccion}")  # Línea de depuración
             resultado = "Positivo" if prediccion == 1 else "Negativo"
             resultado_clase = "positivo" if prediccion == 1 else "negativo"
             explicacion = ("Positivo: Alta probabilidad de diabetes. Consulta a un médico." 
@@ -47,7 +48,6 @@ def index():
             explicacion = "Revisa los datos ingresados e intenta de nuevo."
 
     return render_template("index.html", resultado=resultado, resultado_clase=resultado_clase, explicacion=explicacion, historial=historial)
-
 @app.route("/download/<int:id>")
 def download_pdf(id):
     conn = sqlite3.connect("diabetes.db")
